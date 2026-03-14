@@ -84,12 +84,25 @@ jobs:
             td {{ padding: .6rem .8rem; border-bottom: 1px solid #dee2e6; }}
             a  {{ color: #003DA5; text-decoration: none; }}
             a:hover {{ text-decoration: underline; }}
+            .tool-card {{ background: #E8EFF9; border-radius: 8px; padding: 1rem 1.25rem;
+                          margin-bottom: 1.5rem; display: flex; align-items: center;
+                          justify-content: space-between; gap: 1rem; }}
+            .tool-card p {{ margin: 0; color: #003DA5; font-weight: 600; }}
+            .tool-card span {{ font-size: .85rem; color: #6c757d; font-weight: 400; }}
+            .btn {{ display: inline-block; padding: .45rem 1rem; background: #003DA5;
+                    color: white; border-radius: 6px; text-decoration: none;
+                    font-size: .85rem; font-weight: 600; white-space: nowrap; }}
+            .btn:hover {{ background: #002d7a; text-decoration: none; color: white; }}
             footer {{ margin-top: 2rem; text-align: center; font-size: .8rem; color: #adb5bd; }}
           </style>
           </head>
           <body>
-          <h1>Competitive Intelligence Reports</h1>
+          <h1>Competitive Intelligence</h1>
           <p>Generated daily at 06:00 UTC by Claude Opus 4.6 · Updated {datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")}</p>
+          <div class="tool-card">
+            <div><p>Config Builder <span>— build your company.yaml visually</span></p></div>
+            <a class="btn" href="config-builder.html">Open →</a>
+          </div>
           <table>
             <thead><tr><th>Report</th><th>Description</th></tr></thead>
             <tbody>{rows}</tbody>
@@ -101,6 +114,9 @@ jobs:
           Path("reports/index.html").write_text(html)
           print("index.html written")
           EOF
+
+      - name: Copy config builder UI
+        run: cp config-builder.html reports/config-builder.html
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4

@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CI Agent — Config Builder</title>
+<style>
+  :root {
+    --primary: #003DA5;
+    --primary-light: #E8EFF9;
+    --primary-dark: #002d7a;
+    --accent: #0057D8;
+    --success: #28a745;
+    --danger: #dc3545;
+    --text: #212529;
+    --muted: #6c757d;
+    --border: #dee2e6;
+    --bg: #f8f9fa;
+    --white: #ffffff;
+    --radius: 8px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  header {
+    background: var(--primary);
+    color: white;
+    padding: 1.25rem 2rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  header h1 { font-size: 1.3rem; font-weight: 700; }
+  header p  { font-size: 0.85rem; opacity: 0.75; margin-top: 0.1rem; }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 1fr 420px;
+    gap: 1.5rem;
+    max-width: 1300px;
+    margin: 1.5rem auto;
+    padding: 0 1.5rem;
+  }
+
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; }
+    .preview-col { position: static !important; }
+  }
+
+  /* ── Form panel ── */
+  .form-panel { display: flex; flex-direction: column; gap: 1.25rem; }
+
+  .card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .card-header {
+    background: var(--primary-light);
+    padding: 0.75rem 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+  .card-header h2 {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--primary);
+  }
+  .step-badge {
+    background: var(--primary);
+    color: white;
+    border-radius: 50%;
+    width: 22px; height: 22px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.75rem; font-weight: 700; flex-shrink: 0;
+  }
+  .card-body { padding: 1.25rem; }
+
+  .field { margin-bottom: 1rem; }
+  .field:last-child { margin-bottom: 0; }
+  label {
+    display: block;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 0.35rem;
+  }
+  label .opt {
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+    color: #adb5bd;
+    font-size: 0.78rem;
+  }
+  input[type=text], textarea {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-family: inherit;
+    color: var(--text);
+    transition: border-color 0.15s;
+    background: var(--white);
+  }
+  input[type=text]:focus, textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(0,87,216,0.12);
+  }
+  textarea { resize: vertical; min-height: 70px; }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+
+  /* ── Competitors ── */
+  .competitor-list { display: flex; flex-direction: column; gap: 0.75rem; }
+
+  .competitor-card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .competitor-header {
+    background: #f1f3f5;
+    padding: 0.6rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    user-select: none;
+  }
+  .competitor-header:hover { background: #e9ecef; }
+  .competitor-title {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .competitor-title .drag-handle {
+    color: #adb5bd;
+    cursor: grab;
+    font-size: 1rem;
+  }
+  .competitor-actions { display: flex; gap: 0.4rem; align-items: center; }
+  .btn-icon {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    color: var(--muted);
+    transition: background 0.1s, color 0.1s;
+  }
+  .btn-icon:hover { background: rgba(0,0,0,0.06); color: var(--text); }
+  .btn-icon.danger:hover { background: #fce8ea; color: var(--danger); }
+  .chevron { transition: transform 0.2s; display: inline-block; }
+  .collapsed .chevron { transform: rotate(-90deg); }
+  .competitor-body { padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem; }
+  .competitor-body.hidden { display: none; }
+
+  /* ── Buttons ── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.55rem 1.1rem;
+    border-radius: 6px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: background 0.15s, transform 0.1s;
+  }
+  .btn:active { transform: translateY(1px); }
+  .btn-primary { background: var(--primary); color: white; }
+  .btn-primary:hover { background: var(--primary-dark); }
+  .btn-outline {
+    background: white;
+    color: var(--primary);
+    border: 1.5px solid var(--primary);
+  }
+  .btn-outline:hover { background: var(--primary-light); }
+  .btn-success { background: var(--success); color: white; }
+  .btn-success:hover { background: #218838; }
+  .btn-sm { padding: 0.35rem 0.75rem; font-size: 0.82rem; }
+
+  .add-competitor-row {
+    display: flex;
+    justify-content: center;
+    padding: 0.5rem 0 0;
+  }
+
+  /* ── Preview panel ── */
+  .preview-col {
+    position: sticky;
+    top: 1.5rem;
+    align-self: start;
+  }
+  .preview-header {
+    background: var(--primary-light);
+    padding: 0.75rem 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .preview-header h2 {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--primary);
+  }
+  .preview-actions { display: flex; gap: 0.5rem; }
+  pre {
+    background: #1e1e2e;
+    color: #cdd6f4;
+    padding: 1.1rem 1.25rem;
+    font-size: 0.8rem;
+    font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+    line-height: 1.6;
+    overflow-x: auto;
+    white-space: pre;
+    min-height: 300px;
+    max-height: 70vh;
+    overflow-y: auto;
+    border-radius: 0 0 var(--radius) var(--radius);
+  }
+
+  /* YAML syntax highlight colours */
+  .yaml-key   { color: #89b4fa; }
+  .yaml-str   { color: #a6e3a1; }
+  .yaml-cmnt  { color: #585b70; font-style: italic; }
+  .yaml-sec   { color: #cba6f7; font-weight: bold; }
+
+  .toast {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    background: #333;
+    color: white;
+    padding: 0.6rem 1.2rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.2s, transform 0.2s;
+    pointer-events: none;
+    z-index: 9999;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+
+  .empty-state {
+    text-align: center;
+    padding: 2rem 1rem;
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+  .empty-state .icon { font-size: 2rem; margin-bottom: 0.5rem; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Competitive Intelligence Agent — Config Builder</h1>
+    <p>Build your company.yaml visually, then download and drop it into the project root.</p>
+  </div>
+</header>
+
+<div class="layout">
+
+  <!-- ── Form ── -->
+  <div class="form-panel">
+
+    <!-- Company -->
+    <div class="card">
+      <div class="card-header">
+        <span class="step-badge">1</span>
+        <h2>Your Company</h2>
+      </div>
+      <div class="card-body">
+        <div class="field">
+          <label>Company Name</label>
+          <input type="text" id="company-name" placeholder="e.g. Acme Corp" oninput="render()">
+        </div>
+        <div class="field">
+          <label>Industry <span class="opt">— gives Claude context</span></label>
+          <input type="text" id="company-industry" placeholder="e.g. Insurance technology (P&C InsurTech)" oninput="render()">
+        </div>
+        <div class="field">
+          <label>Description <span class="opt">— 1-2 sentences, optional</span></label>
+          <textarea id="company-description" placeholder="What does your company do? Used to frame Claude's analysis." oninput="render()"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- Competitors -->
+    <div class="card">
+      <div class="card-header">
+        <span class="step-badge">2</span>
+        <h2>Competitors</h2>
+      </div>
+      <div class="card-body">
+        <div class="competitor-list" id="competitor-list">
+          <div class="empty-state">
+            <div class="icon">🏢</div>
+            <div>No competitors added yet.<br>Click the button below to add one.</div>
+          </div>
+        </div>
+        <div class="add-competitor-row">
+          <button class="btn btn-outline" onclick="addCompetitor()">+ Add Competitor</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Download -->
+    <div class="card">
+      <div class="card-header">
+        <span class="step-badge">3</span>
+        <h2>Export</h2>
+      </div>
+      <div class="card-body" style="display:flex;gap:.75rem;flex-wrap:wrap;align-items:center">
+        <button class="btn btn-primary" onclick="downloadYaml()">⬇ Download company.yaml</button>
+        <button class="btn btn-outline" onclick="copyYaml()">⎘ Copy to clipboard</button>
+        <span style="font-size:.82rem;color:var(--muted)">Place in project root alongside main.py</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── Preview ── -->
+  <div class="preview-col">
+    <div class="card">
+      <div class="preview-header">
+        <h2>company.yaml preview</h2>
+        <div class="preview-actions">
+          <button class="btn btn-outline btn-sm" onclick="copyYaml()">Copy</button>
+        </div>
+      </div>
+      <pre id="yaml-preview"><span class="yaml-cmnt"># Fill in the form to generate your config…</span></pre>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let competitors = [];
+let uidCounter = 0;
+
+// ── Competitor management ────────────────────────────────────────────────────
+
+function addCompetitor(data = {}) {
+  const uid = ++uidCounter;
+  competitors.push({ uid, ...data });
+  renderCompetitorList();
+  render();
+  // Auto-focus the name field of the new competitor
+  setTimeout(() => {
+    const el = document.getElementById(`c-name-${uid}`);
+    if (el) el.focus();
+  }, 50);
+}
+
+function removeCompetitor(uid) {
+  competitors = competitors.filter(c => c.uid !== uid);
+  renderCompetitorList();
+  render();
+}
+
+function toggleCompetitor(uid) {
+  const body = document.getElementById(`c-body-${uid}`);
+  const header = document.getElementById(`c-header-${uid}`);
+  body.classList.toggle('hidden');
+  header.closest('.competitor-card').classList.toggle('collapsed');
+}
+
+function getCompetitorData(uid) {
+  const g = id => (document.getElementById(id) || {}).value || '';
+  return {
+    uid,
+    name:       g(`c-name-${uid}`),
+    press_room: g(`c-press_room-${uid}`),
+    blog:       g(`c-blog-${uid}`),
+    products:   g(`c-products-${uid}`),
+    careers:    g(`c-careers-${uid}`),
+    ticker:     g(`c-ticker-${uid}`),
+    news_query: g(`c-news_query-${uid}`),
+  };
+}
+
+function renderCompetitorList() {
+  const list = document.getElementById('competitor-list');
+
+  if (competitors.length === 0) {
+    list.innerHTML = `<div class="empty-state">
+      <div class="icon">🏢</div>
+      <div>No competitors added yet.<br>Click the button below to add one.</div>
+    </div>`;
+    return;
+  }
+
+  list.innerHTML = competitors.map(c => `
+    <div class="competitor-card" id="card-${c.uid}">
+      <div class="competitor-header" id="c-header-${c.uid}">
+        <div class="competitor-title">
+          <span class="drag-handle">⠿</span>
+          <span id="c-label-${c.uid}">${c.name || 'New Competitor'}</span>
+        </div>
+        <div class="competitor-actions">
+          <button class="btn-icon" title="Collapse" onclick="toggleCompetitor(${c.uid})">
+            <span class="chevron">▾</span>
+          </button>
+          <button class="btn-icon danger" title="Remove" onclick="removeCompetitor(${c.uid})">✕</button>
+        </div>
+      </div>
+      <div class="competitor-body" id="c-body-${c.uid}">
+        <div class="field">
+          <label>Competitor Name</label>
+          <input type="text" id="c-name-${c.uid}" value="${esc(c.name || '')}"
+            placeholder="e.g. Duck Creek Technologies"
+            oninput="onCompetitorInput(${c.uid})">
+        </div>
+        <div class="grid-2">
+          <div class="field">
+            <label>Press Room URL <span class="opt">optional</span></label>
+            <input type="text" id="c-press_room-${c.uid}" value="${esc(c.press_room || '')}"
+              placeholder="https://…/news" oninput="render()">
+          </div>
+          <div class="field">
+            <label>Blog URL <span class="opt">optional</span></label>
+            <input type="text" id="c-blog-${c.uid}" value="${esc(c.blog || '')}"
+              placeholder="https://…/blog" oninput="render()">
+          </div>
+          <div class="field">
+            <label>Products URL <span class="opt">optional</span></label>
+            <input type="text" id="c-products-${c.uid}" value="${esc(c.products || '')}"
+              placeholder="https://…/products" oninput="render()">
+          </div>
+          <div class="field">
+            <label>Careers URL <span class="opt">optional</span></label>
+            <input type="text" id="c-careers-${c.uid}" value="${esc(c.careers || '')}"
+              placeholder="https://…/careers" oninput="render()">
+          </div>
+          <div class="field">
+            <label>Stock Ticker <span class="opt">public co. only</span></label>
+            <input type="text" id="c-ticker-${c.uid}" value="${esc(c.ticker || '')}"
+              placeholder="e.g. HUBS" oninput="render()" style="text-transform:uppercase">
+          </div>
+          <div class="field">
+            <label>News Search Query <span class="opt">optional</span></label>
+            <input type="text" id="c-news_query-${c.uid}" value="${esc(c.news_query || '')}"
+              placeholder="defaults to competitor name" oninput="render()">
+          </div>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function onCompetitorInput(uid) {
+  const name = (document.getElementById(`c-name-${uid}`) || {}).value || '';
+  const label = document.getElementById(`c-label-${uid}`);
+  if (label) label.textContent = name || 'New Competitor';
+  render();
+}
+
+// ── YAML generation ──────────────────────────────────────────────────────────
+
+function slug(name) {
+  return name.toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '') || 'competitor';
+}
+
+function esc(s) {
+  return s.replace(/"/g, '&quot;');
+}
+
+function buildYaml() {
+  const name = document.getElementById('company-name').value.trim();
+  const industry = document.getElementById('company-industry').value.trim();
+  const desc = document.getElementById('company-description').value.trim();
+
+  if (!name) return '# Fill in your company name to get started…\n';
+
+  let yaml = `# Generated by CI Agent Config Builder\n`;
+  yaml += `# Place this file at the project root as company.yaml\n\n`;
+  yaml += `company:\n`;
+  yaml += `  name: "${name}"\n`;
+  if (industry) yaml += `  industry: "${industry}"\n`;
+  if (desc) {
+    yaml += `  description: >\n`;
+    // Word-wrap at ~70 chars
+    const words = desc.split(/\s+/);
+    let line = '';
+    for (const w of words) {
+      if (line.length + w.length + 1 > 70) {
+        yaml += `    ${line.trimEnd()}\n`;
+        line = w + ' ';
+      } else {
+        line += w + ' ';
+      }
+    }
+    if (line.trim()) yaml += `    ${line.trimEnd()}\n`;
+  }
+
+  yaml += `\ncompetitors:\n`;
+
+  const competitorData = competitors.map(c => getCompetitorData(c.uid)).filter(c => c.name);
+
+  if (competitorData.length === 0) {
+    yaml += `  # Add competitors using the form\n`;
+    return yaml;
+  }
+
+  // Deduplicate slugs
+  const slugCounts = {};
+  for (const c of competitorData) {
+    const s = slug(c.name);
+    slugCounts[s] = (slugCounts[s] || 0) + 1;
+  }
+  const slugSeen = {};
+  for (const c of competitorData) {
+    let s = slug(c.name);
+    if (slugCounts[s] > 1) {
+      slugSeen[s] = (slugSeen[s] || 0) + 1;
+      s = `${s}_${slugSeen[s]}`;
+    }
+    c._slug = s;
+  }
+
+  for (const c of competitorData) {
+    yaml += `  ${c._slug}:\n`;
+    yaml += `    name: "${c.name}"\n`;
+    if (c.press_room) yaml += `    press_room: "${c.press_room}"\n`;
+    if (c.blog)       yaml += `    blog: "${c.blog}"\n`;
+    if (c.products)   yaml += `    products: "${c.products}"\n`;
+    if (c.careers)    yaml += `    careers: "${c.careers}"\n`;
+    if (c.ticker)     yaml += `    ticker: "${c.ticker.toUpperCase()}"\n`;
+    if (c.news_query) yaml += `    news_query: "${c.news_query}"\n`;
+    yaml += `\n`;
+  }
+
+  return yaml;
+}
+
+// ── Syntax-highlighted preview ────────────────────────────────────────────────
+
+function highlight(yaml) {
+  return yaml
+    .split('\n')
+    .map(line => {
+      if (line.trim().startsWith('#')) {
+        return `<span class="yaml-cmnt">${htmlEsc(line)}</span>`;
+      }
+      if (/^(company|competitors):/.test(line.trim())) {
+        return `<span class="yaml-sec">${htmlEsc(line)}</span>`;
+      }
+      // key: "value"
+      const m = line.match(/^(\s*)([a-z_]+)(:\s*)(".*)$/);
+      if (m) {
+        return `${htmlEsc(m[1])}<span class="yaml-key">${htmlEsc(m[2])}</span>${htmlEsc(m[3])}<span class="yaml-str">${htmlEsc(m[4])}</span>`;
+      }
+      // key: (no value — section header like "  duck_creek:")
+      const m2 = line.match(/^(\s*)([a-z_]+)(:)(.*)$/);
+      if (m2) {
+        return `${htmlEsc(m2[1])}<span class="yaml-key">${htmlEsc(m2[2])}</span>${htmlEsc(m2[3])}${htmlEsc(m2[4])}`;
+      }
+      return htmlEsc(line);
+    })
+    .join('\n');
+}
+
+function htmlEsc(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function render() {
+  const yaml = buildYaml();
+  document.getElementById('yaml-preview').innerHTML = highlight(yaml);
+}
+
+// ── Actions ───────────────────────────────────────────────────────────────────
+
+function downloadYaml() {
+  const yaml = buildYaml();
+  const blob = new Blob([yaml], { type: 'text/yaml' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'company.yaml';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  showToast('Downloaded company.yaml');
+}
+
+function copyYaml() {
+  const yaml = buildYaml();
+  navigator.clipboard.writeText(yaml).then(() => {
+    showToast('Copied to clipboard ✓');
+  }).catch(() => {
+    // Fallback
+    const ta = document.createElement('textarea');
+    ta.value = yaml;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('Copied to clipboard ✓');
+  });
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+
+// Pre-populate with the Guidewire example so users see a working demo
+window.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('company-name').value = 'Guidewire Software';
+  document.getElementById('company-industry').value = 'Insurance technology (P&C InsurTech)';
+  document.getElementById('company-description').value =
+    'Guidewire is the platform P&C insurers trust to engage, innovate, and grow efficiently. It serves over 570 carriers worldwide with policy, billing, claims, and digital engagement products.';
+
+  const examples = [
+    { name: 'Duck Creek Technologies', press_room: 'https://www.duckcreek.com/news/', blog: 'https://www.duckcreek.com/blog/', products: 'https://www.duckcreek.com/products/', careers: 'https://www.duckcreek.com/company/careers/', news_query: 'Duck Creek Technologies insurance' },
+    { name: 'Sapiens International', press_room: 'https://www.sapiens.com/news-room/', blog: 'https://www.sapiens.com/blog/', products: 'https://www.sapiens.com/solution/', careers: 'https://www.sapiens.com/about/careers/', ticker: 'SPNS', news_query: 'Sapiens International insurance software' },
+    { name: 'Majesco', press_room: 'https://www.majesco.com/news/', blog: 'https://www.majesco.com/blog/', products: 'https://www.majesco.com/solutions/', careers: 'https://www.majesco.com/company/careers/', ticker: 'MJCO', news_query: 'Majesco insurance platform cloud' },
+  ];
+  examples.forEach(e => addCompetitor(e));
+  render();
+});
+</script>
+</body>
+</html>
