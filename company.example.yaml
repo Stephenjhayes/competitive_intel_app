@@ -1,0 +1,107 @@
+# ── Your company ──────────────────────────────────────────────────────────────
+# Copy this file to company.yaml and fill it in.
+# company.yaml is gitignored — it's your private competitive configuration.
+
+company:
+  name: "Guidewire Software"
+  industry: "Insurance technology (P&C InsurTech)"
+  # 1-2 sentence description used to give Claude context when generating insights
+  description: >
+    Guidewire is the platform P&C insurers trust to engage, innovate, and grow
+    efficiently. It serves over 570 carriers worldwide with policy, billing,
+    claims, and digital engagement products.
+
+# ── Competitors ────────────────────────────────────────────────────────────────
+# Add as many competitors as you like.
+# Required fields per competitor: name
+# Optional: press_room, blog, products, careers, ticker, news_query
+#
+# ticker        — stock ticker for SEC EDGAR filing lookups (omit if private)
+# news_query    — NewsAPI search string (defaults to the competitor name)
+# firehose_rules — Lucene queries for Ahrefs Firehose (auto-generated if omitted)
+
+competitors:
+  duck_creek:
+    name: "Duck Creek Technologies"
+    press_room: "https://www.duckcreek.com/news/"
+    blog: "https://www.duckcreek.com/blog/"
+    products: "https://www.duckcreek.com/products/"
+    careers: "https://www.duckcreek.com/company/careers/"
+    news_query: "Duck Creek Technologies insurance"
+    # ticker omitted — private company (Vista Equity)
+
+  sapiens:
+    name: "Sapiens International"
+    press_room: "https://www.sapiens.com/news-room/"
+    blog: "https://www.sapiens.com/blog/"
+    products: "https://www.sapiens.com/solution/"
+    careers: "https://www.sapiens.com/about/careers/"
+    ticker: "SPNS"
+    news_query: "Sapiens International insurance software"
+
+  majesco:
+    name: "Majesco"
+    press_room: "https://www.majesco.com/news/"
+    blog: "https://www.majesco.com/blog/"
+    products: "https://www.majesco.com/solutions/"
+    careers: "https://www.majesco.com/company/careers/"
+    ticker: "MJCO"
+    news_query: "Majesco insurance platform cloud"
+
+  insurity:
+    name: "Insurity"
+    press_room: "https://www.insurity.com/news/"
+    blog: "https://www.insurity.com/blog/"
+    products: "https://www.insurity.com/solutions/"
+    careers: "https://www.insurity.com/careers/"
+    news_query: "Insurity insurance software P&C"
+
+  applied_systems:
+    name: "Applied Systems"
+    press_room: "https://www1.appliedsystems.com/en-us/news/"
+    blog: "https://www1.appliedsystems.com/en-us/company/blog/"
+    products: "https://www1.appliedsystems.com/en-us/solutions/"
+    careers: "https://www1.appliedsystems.com/en-us/company/careers/"
+    news_query: "Applied Systems insurance agency management"
+
+  one_shield:
+    name: "OneShield Software"
+    press_room: "https://www.oneshield.com/news/"
+    blog: "https://www.oneshield.com/blog/"
+    products: "https://www.oneshield.com/solutions/"
+    careers: "https://www.oneshield.com/company/careers/"
+    news_query: "OneShield insurance policy administration"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Example: Salesforce tracking HubSpot, Microsoft Dynamics, Zoho
+# ─────────────────────────────────────────────────────────────────────────────
+# company:
+#   name: "Salesforce"
+#   industry: "CRM and enterprise cloud software"
+#   description: >
+#     Salesforce is the world's #1 CRM platform, serving 150,000+ companies
+#     with sales, service, marketing, and commerce cloud products.
+#
+# competitors:
+#   hubspot:
+#     name: "HubSpot"
+#     press_room: "https://www.hubspot.com/company-news"
+#     blog: "https://blog.hubspot.com/"
+#     products: "https://www.hubspot.com/products"
+#     careers: "https://www.hubspot.com/careers"
+#     ticker: "HUBS"
+#     news_query: "HubSpot CRM marketing"
+#
+#   microsoft_dynamics:
+#     name: "Microsoft Dynamics 365"
+#     press_room: "https://news.microsoft.com/"
+#     blog: "https://cloudblogs.microsoft.com/dynamics365/"
+#     products: "https://www.microsoft.com/en-us/dynamics-365"
+#     news_query: "Microsoft Dynamics 365 CRM"
+#
+#   zoho:
+#     name: "Zoho CRM"
+#     press_room: "https://www.zoho.com/news/"
+#     blog: "https://www.zoho.com/blog/"
+#     products: "https://www.zoho.com/crm/"
+#     news_query: "Zoho CRM enterprise"
