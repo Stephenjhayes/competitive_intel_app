@@ -21,6 +21,7 @@ Flags
   --bootstrap      One-time Firehose tap + rule setup (run after --setup)
   --run-now        Full pipeline: collect → analyse → report
   --schedule       Daily cron (default 06:00 UTC, override via DAILY_RUN_HOUR/MINUTE)
+  --spotlight NAME Ad-hoc snapshot for any competitor not in company.yaml
   --report-only    Skip data collection, regenerate report from existing DB
   --news-days N    Days of news/SEC data to pull (default 1; use 30 on first run)
   --skip-firehose  Skip Firehose pull
@@ -61,6 +62,8 @@ if not _SETUP_FLAG:
     from scrapers.news_scraper import fetch_all_competitor_news, fetch_all_sec_filings
     from analysis.analyzer import build_all_daily_snapshots, build_comparison_report
     from reports.report_generator import generate_html_report, generate_daily_digest_markdown
+
+import re as _re
 
 logging.basicConfig(
     level=logging.INFO,
@@ -305,6 +308,81 @@ def run_daily_pipeline(
     log.info("Pipeline complete — %s", today)
 
 
+# ── Spotlight: ad-hoc snapshot for any competitor ────────────────────────────
+
+def run_spotlight(name: str, *, news_days: int = 7, ticker: str | None = None) -> None:
+    """
+    One-off competitive snapshot for a company not in company.yaml.
+    Pulls news (+ SEC filings if ticker supplied), runs a Claude snapshot,
+    and prints the result to stdout. Nothing is persisted to the main DB.
+    """
+    import tempfile, sqlite3
+    from pathlib import Path
+
+    # Slug used as a temporary competitor ID
+    slug = _re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_")
+
+    log.info("Spotlight: '%s' (slug=%s, news_days=%d)", name, slug, news_days)
+
+    # ── Spin up a throw-away SQLite DB so we don't pollute the main one ──────
+    tmp_db = tempfile.mktemp(suffix=".db")
+    original_db = os.environ.get("INTEL_DB_PATH", "")
+    os.environ["INTEL_DB_PATH"] = tmp_db
+
+    # Re-import storage with the temp DB path
+    import importlib
+    import storage.database as _db_mod
+    importlib.reload(_db_mod)
+    _db_mod.init_db()
+
+    # ── Collect news ──────────────────────────────────────────────────────────
+    from scrapers.news_scraper import fetch_news, fetch_sec_filings
+    news_ids = fetch_news(slug, name, days_back=news_days)
+    log.info("Spotlight news: %d articles", len(news_ids))
+
+    if ticker:
+        sec_ids = fetch_sec_filings(slug, name, ticker, days_back=max(news_days, 7))
+        log.info("Spotlight SEC filings: %d", len(sec_ids))
+
+    # ── Build a temporary COMPETITORS entry so the analyzer can reference it ─
+    from config import COMPETITORS as _COMPETITORS
+    _COMPETITORS[slug] = {"name": name}
+
+    # ── Run Claude snapshot ───────────────────────────────────────────────────
+    from analysis.analyzer import build_daily_snapshot
+    result = build_daily_snapshot(slug, lookback_days=news_days)
+
+    # ── Restore env and clean up ──────────────────────────────────────────────
+    if original_db:
+        os.environ["INTEL_DB_PATH"] = original_db
+    else:
+        del os.environ["INTEL_DB_PATH"]
+    del _COMPETITORS[slug]
+    Path(tmp_db).unlink(missing_ok=True)
+
+    # ── Print results ─────────────────────────────────────────────────────────
+    if not result:
+        log.warning("No data found for '%s' in the last %d days.", name, news_days)
+        print(f"\nNo recent news found for '{name}'. Try --news-days 30 for a wider window.\n")
+        return
+
+    sentiment = result.get("sentiment_score", 0.0) or 0.0
+    bar = "🔴" if sentiment < -0.3 else "🟡" if sentiment < 0.3 else "🟢"
+
+    print(f"\n{'='*60}")
+    print(f"  SPOTLIGHT: {name}  {bar}")
+    print(f"{'='*60}\n")
+    print(result.get("summary", ""))
+    print("\nKey Signals:")
+    for s in result.get("key_signals", []):
+        print(f"  • {s}")
+    if result.get("watch_items"):
+        print("\nWatch:")
+        for w in result["watch_items"]:
+            print(f"  ⚠️  {w}")
+    print()
+
+
 # ── CLI ───────────────────────────────────────────────────────────────────────
 
 def _parse_args():
@@ -317,6 +395,11 @@ def _parse_args():
           python main.py --bootstrap       # Firehose tap + rules setup
           python main.py --run-now --news-days 30   # first full run
           python main.py --schedule        # start daily cron
+
+        Ad-hoc research:
+          python main.py --spotlight "Federato"
+          python main.py --spotlight "Federato" --news-days 30
+          python main.py --spotlight "Federato" --news-days 30 --ticker FDRT
         """),
     )
     mode = p.add_mutually_exclusive_group()
@@ -324,11 +407,13 @@ def _parse_args():
     mode.add_argument("--bootstrap", action="store_true", help="Create Firehose tap + sync rules")
     mode.add_argument("--run-now",   action="store_true", help="Run the full pipeline now")
     mode.add_argument("--schedule",  action="store_true", help="Start the daily scheduler")
+    mode.add_argument("--spotlight", metavar="NAME",      help="Ad-hoc snapshot for any competitor (e.g. 'Federato')")
 
     p.add_argument("--report-only",    action="store_true", help="Regenerate report only (no collection)")
     p.add_argument("--news-days",      type=int, default=1,  help="Days of news/SEC to pull (default 1)")
     p.add_argument("--skip-firehose",  action="store_true",  help="Skip Firehose pull")
     p.add_argument("--skip-firecrawl", action="store_true",  help="Skip Firecrawl scraping")
+    p.add_argument("--ticker",         metavar="TICKER",     help="Stock ticker for --spotlight SEC lookups (e.g. FDRT)")
     return p.parse_args()
 
 
@@ -368,6 +453,10 @@ def main():
             scheduler.start()
         except (KeyboardInterrupt, SystemExit):
             log.info("Scheduler stopped.")
+        return
+
+    if args.spotlight:
+        run_spotlight(args.spotlight, news_days=args.news_days, ticker=args.ticker)
         return
 
     print("No action specified. Run `python main.py --help` for usage.")
